@@ -1,19 +1,47 @@
-const form = document.querySelector('form ')
+const form = document.querySelector('form')
 const addButton = document.querySelector('.add-btn')
 const input = document.querySelector('input')
 const textarea =document.querySelector('textarea')
 const container =document.querySelector('.container')
-let notes = JSON.parse(localStorage.getItem('notes')) || []
 
+const API_URL = "http://localhost:3000/notes"
+document.addEventListener('DOMContentLoaded', fetchNotes)
 
-notes.forEach(note => {
-  createNote(note.title, note.desc)
-})
+function fetchNotes() {
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(notes => {
+      container.innerHTML = ""
+      notes.forEach(note => {
+        createNote(note)
+      })
+    })
+}
+
 
 form.addEventListener('submit' ,(e) =>{
    e.preventDefault()
-    const title = input.value
-    const desc =textarea.value 
+    const title = input.value.trim()
+    const desc =textarea.value.trim()
+
+ if (title === "" || desc === "") {
+    alert("Note cannot be empty")
+    return
+  }
+
+  const newNote = { title, desc }
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newNote)
+  })
+    .then(res => res.json())
+    .then(note => {
+      createNote(note)
+      form.reset()
+    })
+})
 
 
 const card = document.createElement('div')
@@ -28,20 +56,9 @@ card.innerHTML = `
 `
 container.appendChild(card)
 console.log(card)
-})
-container.addEventListener('click', (e) => {
-     const card = e.target.parentElement
 
-    if (e.target.classList.contains('delete-btn')) {
-    card.remove()
- }
 
- if (e.target.classList.contains('edit-btn')) {
-     input.value = card.querySelector('h1').innerText
-     textarea.value = card.querySelector('p').innerText
-    card.remove() // remove old note while editing
-  }
-})
+
 
 
 function createNote(title, desc) {
@@ -53,5 +70,26 @@ function createNote(title, desc) {
          <button class="delete-btn">Delete</button>
          <button class="edit-btn">Edit</button>
    `
+   card.querySelector('.delete-btn').addEventListener('click', () => {
+    fetch(`${API_URL}/${note.id}`, {
+      method: "DELETE"
+    }).then(() => card.remove())
+  })
+
+  // EDIT
+  card.querySelector('.edit-btn').addEventListener('click', () => {
+    const newTitle = prompt("Edit title", note.title)
+    const newDesc = prompt("Edit description", note.desc)
+
+    if (!newTitle || !newDesc) return
+
+    fetch(`${API_URL}/${note.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle, desc: newDesc })
+    })
+      .then(() => fetchNotes())
+  })
+
    container.appendChild(card)
 }
